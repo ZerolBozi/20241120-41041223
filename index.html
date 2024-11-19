@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Google 認證系統</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn {
+            background-color: #4285f4;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+
+        .btn:hover {
+            background-color: #357abd;
+        }
+
+        .user-info {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .user-photo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin-bottom: 10px;
+        }
+
+        .auth-buttons {
+            margin: 20px 0;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>會員系統</h1>
+
+        <div id="authButtons" class="auth-buttons">
+            <button id="loginBtn" class="btn">Google 登入</button>
+        </div>
+
+        <div id="userInfo" class="user-info">
+            <img id="userPhoto" class="user-photo" src="" alt="使用者照片">
+            <h2>會員資料</h2>
+            <p>姓名：<span id="userName"></span></p>
+            <p>Email：<span id="userEmail"></span></p>
+            <p>最後登入時間：<span id="lastLogin"></span></p>
+            <button id="logoutBtn" class="btn">登出</button>
+        </div>
+
+        <div id="registerForm" class="hidden">
+            <h2>新會員註冊</h2>
+            <p>我們發現您是第一次使用 Google 帳號登入，請確認以下資料完成註冊：</p>
+            <button id="confirmRegister" class="btn">確認註冊</button>
+            <button id="cancelRegister" class="btn">取消</button>
+        </div>
+    </div>
+
+    <script>
+        // Firebase 配置
+        const firebaseConfig = {
+            apiKey: "AIzaSyC_JplWOvc89LIGeQN8Wk5idhd1eQRsBE0",
+            authDomain: "test-95b4f.firebaseapp.com",
+            databaseURL: "https://test-95b4f-default-rtdb.firebaseio.com",
+            projectId: "test-95b4f",
+            storageBucket: "test-95b4f.firebasestorage.app",
+            messagingSenderId: "681860875624",
+            appId: "1:681860875624:web:1575964ab615dab45282dd"
+        };
+
+        // 初始化 Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+        // DOM 元素
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userInfo = document.getElementById('userInfo');
+        const registerForm = document.getElementById('registerForm');
+        const confirmRegister = document.getElementById('confirmRegister');
+        const cancelRegister = document.getElementById('cancelRegister');
+
+        // Google 登入
+        loginBtn.addEventListener('click', () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider);
+        });
+
+        // 登出
+        logoutBtn.addEventListener('click', () => {
+            auth.signOut();
+        });
+
+        // 確認註冊
+        confirmRegister.addEventListener('click', () => {
+            const user = auth.currentUser;
+            const userData = {
+                name: user.displayName,
+                email: user.email,
+                photoURL: user.photoURL,
+                lastLogin: new Date().toISOString()
+            };
+
+            database.ref('users/' + user.uid).set(userData)
+                .then(() => {
+                    registerForm.classList.add('hidden');
+                    updateUIWithUserData(userData);
+                })
+                .catch(error => {
+                    console.error("Error writing user data:", error);
+                    alert('註冊失敗，請稍後再試');
+                });
+        });
+
+        // 取消註冊
+        cancelRegister.addEventListener('click', () => {
+            auth.signOut();
+            registerForm.classList.add('hidden');
+        });
+
+        // 監聽認證狀態變化
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                // 檢查用戶是否已註冊
+                database.ref('users/' + user.uid).once('value')
+                    .then(snapshot => {
+                        if (snapshot.exists()) {
+                            // 更新最後登入時間
+                            const userData = snapshot.val();
+                            userData.lastLogin = new Date().toISOString();
+                            database.ref('users/' + user.uid).update({
+                                lastLogin: userData.lastLogin
+                            });
+                            updateUIWithUserData(userData);
+                        } else {
+                            // 顯示註冊表單
+                            registerForm.classList.remove('hidden');
+                            loginBtn.classList.add('hidden');
+                        }
+                    });
+            } else {
+                // 用戶未登入
+                userInfo.style.display = 'none';
+                loginBtn.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+            }
+        });
+
+        // 更新UI顯示用戶資料
+        function updateUIWithUserData(userData) {
+            document.getElementById('userName').textContent = userData.name;
+            document.getElementById('userEmail').textContent = userData.email;
+            document.getElementById('userPhoto').src = userData.photoURL;
+            document.getElementById('lastLogin').textContent = new Date(userData.lastLogin).toLocaleString();
+            userInfo.style.display = 'block';
+            loginBtn.classList.add('hidden');
+        }
+    </script>
+</body>
+
+</html>
