@@ -10,7 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             margin: 0;
             padding: 20px;
             background-color: #f5f5f5;
@@ -25,19 +25,38 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
-        .btn {
-            background-color: #4285f4;
-            color: white;
-            padding: 10px 20px;
-            border: none;
+        .google-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: white;
+            border: 1px solid #dadce0;
             border-radius: 4px;
+            padding: 1px;
+            height: 40px;
+            width: 100%;
+            max-width: 320px;
+            margin: 10px auto;
             cursor: pointer;
-            font-size: 16px;
-            margin: 10px 0;
+            transition: background-color 0.3s;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
 
-        .btn:hover {
-            background-color: #357abd;
+        .google-btn:hover {
+            background-color: #f8f9fa;
+        }
+
+        .google-btn img {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+        }
+
+        .google-btn span {
+            color: #3c4043;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.25px;
         }
 
         .user-info {
@@ -54,10 +73,100 @@
 
         .auth-buttons {
             margin: 20px 0;
+            display: flex;
+            justify-content: center;
         }
 
         .hidden {
             display: none;
+        }
+
+        .error-message {
+            color: red;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid red;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .logout-btn {
+            background-color: #f1f3f4;
+            color: #3c4043;
+            border: none;
+            padding: 8px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .logout-btn:hover {
+            background-color: #e8eaed;
+        }
+
+        .delete-account-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            margin-top: 20px;
+        }
+
+        .delete-account-btn:hover {
+            background-color: #c82333;
+        }
+
+        /* 新增確認對話框樣式 */
+        .confirm-dialog {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .dialog-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .dialog-buttons {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        .dialog-buttons button {
+            margin-left: 10px;
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .confirm-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .cancel-delete {
+            background-color: #6c757d;
+            color: white;
         }
     </style>
 </head>
@@ -66,8 +175,13 @@
     <div class="container">
         <h1>會員系統</h1>
 
+        <div id="errorMessage" class="error-message"></div>
+
         <div id="authButtons" class="auth-buttons">
-            <button id="loginBtn" class="btn">Google 登入</button>
+            <button id="loginBtn" class="google-btn">
+                <img src="google.png" alt="Google logo">
+                <span>Log in with Google</span>
+            </button>
         </div>
 
         <div id="userInfo" class="user-info">
@@ -76,14 +190,28 @@
             <p>姓名：<span id="userName"></span></p>
             <p>Email：<span id="userEmail"></span></p>
             <p>最後登入時間：<span id="lastLogin"></span></p>
-            <button id="logoutBtn" class="btn">登出</button>
+            <button id="logoutBtn" class="logout-btn">登出</button>
+            <button id="deleteAccountBtn" class="delete-account-btn">註銷帳號</button>
         </div>
 
         <div id="registerForm" class="hidden">
             <h2>新會員註冊</h2>
             <p>我們發現您是第一次使用 Google 帳號登入，請確認以下資料完成註冊：</p>
-            <button id="confirmRegister" class="btn">確認註冊</button>
-            <button id="cancelRegister" class="btn">取消</button>
+            <button id="confirmRegister" class="google-btn">
+                <img src="google.png" alt="Google logo">
+                <span>確認註冊</span>
+            </button>
+            <button id="cancelRegister" class="logout-btn">取消</button>
+        </div>
+
+        <div id="dialogOverlay" class="dialog-overlay"></div>
+        <div id="confirmDialog" class="confirm-dialog">
+            <h3>確認註銷帳號</h3>
+            <p>您確定要註銷帳號嗎？此操作無法復原，所有資料將被永久刪除。</p>
+            <div class="dialog-buttons">
+                <button id="cancelDeleteBtn" class="cancel-delete">取消</button>
+                <button id="confirmDeleteBtn" class="confirm-delete">確認註銷</button>
+            </div>
         </div>
     </div>
 
@@ -99,93 +227,222 @@
             appId: "1:681860875624:web:1575964ab615dab45282dd"
         };
 
-        // 初始化 Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const database = firebase.database();
+        // 錯誤處理函數
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
 
-        // DOM 元素
-        const loginBtn = document.getElementById('loginBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const userInfo = document.getElementById('userInfo');
-        const registerForm = document.getElementById('registerForm');
-        const confirmRegister = document.getElementById('confirmRegister');
-        const cancelRegister = document.getElementById('cancelRegister');
+        try {
+            firebase.initializeApp(firebaseConfig);
+            const auth = firebase.auth();
+            const database = firebase.database();
 
-        // Google 登入
-        loginBtn.addEventListener('click', () => {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider);
-        });
-
-        // 登出
-        logoutBtn.addEventListener('click', () => {
-            auth.signOut();
-        });
-
-        // 確認註冊
-        confirmRegister.addEventListener('click', () => {
-            const user = auth.currentUser;
-            const userData = {
-                name: user.displayName,
-                email: user.email,
-                photoURL: user.photoURL,
-                lastLogin: new Date().toISOString()
-            };
-
-            database.ref('users/' + user.uid).set(userData)
-                .then(() => {
-                    registerForm.classList.add('hidden');
-                    updateUIWithUserData(userData);
-                })
-                .catch(error => {
-                    console.error("Error writing user data:", error);
-                    alert('註冊失敗，請稍後再試');
-                });
-        });
-
-        // 取消註冊
-        cancelRegister.addEventListener('click', () => {
-            auth.signOut();
-            registerForm.classList.add('hidden');
-        });
-
-        // 監聽認證狀態變化
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                // 檢查用戶是否已註冊
-                database.ref('users/' + user.uid).once('value')
-                    .then(snapshot => {
-                        if (snapshot.exists()) {
-                            // 更新最後登入時間
-                            const userData = snapshot.val();
-                            userData.lastLogin = new Date().toISOString();
-                            database.ref('users/' + user.uid).update({
-                                lastLogin: userData.lastLogin
-                            });
-                            updateUIWithUserData(userData);
-                        } else {
-                            // 顯示註冊表單
-                            registerForm.classList.remove('hidden');
-                            loginBtn.classList.add('hidden');
-                        }
+            // Google 登入
+            loginBtn.addEventListener('click', () => {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                auth.signInWithPopup(provider)
+                    .then((result) => {
+                        // 檢查用戶是否已註冊
+                        checkUserRegistration(result.user);
+                    })
+                    .catch(error => {
+                        console.error('登入錯誤:', error);
+                        showError('登入失敗，請稍後再試');
                     });
-            } else {
-                // 用戶未登入
-                userInfo.style.display = 'none';
-                loginBtn.classList.remove('hidden');
-                registerForm.classList.add('hidden');
-            }
-        });
+            });
 
-        // 更新UI顯示用戶資料
-        function updateUIWithUserData(userData) {
-            document.getElementById('userName').textContent = userData.name;
-            document.getElementById('userEmail').textContent = userData.email;
-            document.getElementById('userPhoto').src = userData.photoURL;
-            document.getElementById('lastLogin').textContent = new Date(userData.lastLogin).toLocaleString();
-            userInfo.style.display = 'block';
-            loginBtn.classList.add('hidden');
+            // 檢查用戶是否已註冊
+            async function checkUserRegistration(user) {
+                try {
+                    const snapshot = await database.ref('users/' + user.uid).once('value');
+                    if (!snapshot.exists()) {
+                        // 如果用戶不存在於資料庫，則刪除 Authentication 中的用戶
+                        showRegisterForm(user);
+                    } else {
+                        // 用戶已註冊，更新登入時間
+                        const userData = snapshot.val();
+                        userData.lastLogin = new Date().toISOString();
+                        await database.ref('users/' + user.uid).update({
+                            lastLogin: userData.lastLogin
+                        });
+                        updateUIWithUserData(userData);
+                    }
+                } catch (error) {
+                    console.error("檢查用戶註冊狀態錯誤:", error);
+                    showError('檢查用戶狀態失敗');
+                }
+            }
+
+            // 顯示註冊表單
+            function showRegisterForm(user) {
+                registerForm.classList.remove('hidden');
+                loginBtn.classList.add('hidden');
+
+                const newCancelRegister = cancelRegister.cloneNode(true);
+                const newConfirmRegister = confirmRegister.cloneNode(true);
+                cancelRegister.parentNode.replaceChild(newCancelRegister, cancelRegister);
+                confirmRegister.parentNode.replaceChild(newConfirmRegister, confirmRegister);
+
+                newCancelRegister.addEventListener('click', async () => {
+                    try {
+                        await user.delete();
+                        registerForm.classList.add('hidden');
+                        loginBtn.classList.remove('hidden');
+                        showError('已取消註冊');
+                    } catch (error) {
+                        console.error("取消註冊錯誤:", error);
+                        if (error.code === 'auth/requires-recent-login') {
+                            try {
+                                const provider = new firebase.auth.GoogleAuthProvider();
+                                await auth.currentUser.reauthenticateWithPopup(provider);
+                                await user.delete();
+                                registerForm.classList.add('hidden');
+                                loginBtn.classList.remove('hidden');
+                                showError('已取消註冊');
+                            } catch (reAuthError) {
+                                console.error("重新認證錯誤:", reAuthError);
+                                showError('取消註冊失敗，請重新登入後再試');
+                            }
+                        } else {
+                            showError('取消註冊失敗，請稍後再試');
+                        }
+                    }
+                });
+
+                newConfirmRegister.addEventListener('click', async () => {
+                    try {
+                        const userData = {
+                            name: user.displayName,
+                            email: user.email,
+                            photoURL: user.photoURL,
+                            lastLogin: new Date().toISOString(),
+                            registrationDate: new Date().toISOString()
+                        };
+
+                        await database.ref('users/' + user.uid).set(userData);
+                        registerForm.classList.add('hidden');
+                        updateUIWithUserData(userData);
+                    } catch (error) {
+                        console.error("註冊錯誤:", error);
+                        showError('註冊失敗，請稍後再試');
+                    }
+                });
+            }
+
+            // 登出
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    await auth.signOut();
+                    userInfo.style.display = 'none';
+                    loginBtn.classList.remove('hidden');
+                    showError('已成功登出');
+                } catch (error) {
+                    console.error('登出錯誤:', error);
+                    showError('登出失敗，請稍後再試');
+                }
+            });
+
+            // 監聽認證狀態變化
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    // 檢查用戶是否在資料庫中
+                    database.ref('users/' + user.uid).once('value')
+                        .then(snapshot => {
+                            if (!snapshot.exists()) {
+                                // 顯示註冊表單
+                                showRegisterForm(user);
+                            } else {
+                                // 用戶已註冊，更新最後登入時間
+                                const userData = snapshot.val();
+                                userData.lastLogin = new Date().toISOString();
+                                database.ref('users/' + user.uid).update({
+                                    lastLogin: userData.lastLogin
+                                });
+                                updateUIWithUserData(userData);
+                            }
+                        })
+                        .catch(error => {
+                            console.error("檢查用戶狀態錯誤:", error);
+                            showError('檢查用戶狀態失敗');
+                        });
+                } else {
+                    // 用戶未登入或已登出
+                    userInfo.style.display = 'none';
+                    loginBtn.classList.remove('hidden');
+                    registerForm.classList.add('hidden');
+                }
+            });
+
+            // 更新UI顯示用戶資料
+            function updateUIWithUserData(userData) {
+                document.getElementById('userName').textContent = userData.name;
+                document.getElementById('userEmail').textContent = userData.email;
+                document.getElementById('userPhoto').src = userData.photoURL;
+                document.getElementById('lastLogin').textContent = new Date(userData.lastLogin).toLocaleString();
+                userInfo.style.display = 'block';
+                loginBtn.classList.add('hidden');
+            }
+
+            const deleteAccountBtn = document.getElementById('deleteAccountBtn');
+            const confirmDialog = document.getElementById('confirmDialog');
+            const dialogOverlay = document.getElementById('dialogOverlay');
+            const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+            const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+
+            // 顯示確認對話框
+            deleteAccountBtn.addEventListener('click', () => {
+                confirmDialog.style.display = 'block';
+                dialogOverlay.style.display = 'block';
+            });
+
+            // 取消註銷
+            cancelDeleteBtn.addEventListener('click', () => {
+                confirmDialog.style.display = 'none';
+                dialogOverlay.style.display = 'none';
+            });
+
+            // 確認註銷帳號
+            confirmDeleteBtn.addEventListener('click', async () => {
+                try {
+                    const user = auth.currentUser;
+                    if (user) {
+                        // 先刪除資料庫中的用戶資料
+                        await database.ref('users/' + user.uid).remove();
+
+                        // 再刪除 Authentication 中的用戶
+                        await user.delete();
+
+                        // 關閉對話框
+                        confirmDialog.style.display = 'none';
+                        dialogOverlay.style.display = 'none';
+
+                        // 更新 UI
+                        userInfo.style.display = 'none';
+                        loginBtn.classList.remove('hidden');
+
+                        showError('帳號已成功註銷');
+                    }
+                } catch (error) {
+                    console.error('註銷帳號錯誤:', error);
+                    // 如果是重新認證的錯誤，需要先讓用戶重新登入
+                    if (error.code === 'auth/requires-recent-login') {
+                        showError('為了安全起見，請重新登入後再註銷帳號');
+                        // 登出用戶，讓他重新登入
+                        await auth.signOut();
+                    } else {
+                        showError('註銷帳號失敗，請稍後再試');
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error('Firebase 初始化錯誤:', error);
+            showError('Firebase 初始化失敗，請確認配置是否正確');
         }
     </script>
 </body>
